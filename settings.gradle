@@ -1,0 +1,4 @@
+rootProject.name = 'bootstrap'
+
+include ':jndn-node'
+project(':jndn-node').projectDir = new File(settingsDir, '../jndn-node')
