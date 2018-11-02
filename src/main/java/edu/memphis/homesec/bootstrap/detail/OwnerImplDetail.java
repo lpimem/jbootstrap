@@ -12,8 +12,14 @@ import net.named_data.jndn.security.SecurityException;
 import net.named_data.jndn.security.certificate.IdentityCertificate;
 
 import java.io.IOException;
+import java.math.BigInteger;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.security.cert.Certificate;
 import java.util.logging.Logger;
+
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 
 public class OwnerImplDetail {
 
@@ -29,10 +35,14 @@ public class OwnerImplDetail {
 
     OnInterestCallback callback =
         (prefix, interest, face, interestFilterId, filter) -> {
-      if (!examineInitiateInterest(interest, configuration)) {
-        onFail.onFail(configuration.getDevicePairingId(),
-                      "Invalid interest for getting owner certificate");
-        return;
+      try {
+        if (!examineInitiateInterest(interest, configuration)) {
+          onFail.onFail(configuration.getDevicePairingId(),
+                        "Invalid interest for getting owner certificate");
+          return;
+        }
+      } catch (BootstrapException e1) {
+        onFail.onFail(configuration.getDevicePairingId(), e1.getMessage());
       }
 
       try {
@@ -67,15 +77,44 @@ public class OwnerImplDetail {
     return null;
   }
 
-  private byte[] hmac(byte[] input, byte[] key) {
-    // TODO: implement
-    return null;
+  public static String toHex(byte[] bytes) {
+    BigInteger bi = new BigInteger(1, bytes);
+    return String.format("%0" + (bytes.length << 1) + "X", bi);
   }
 
-  private String hmac(String input, String key) { return null; }
+  /*
+   * from: http://www.java2s.com/Code/Java/Data-Type/hexStringToByteArray.htm
+   */
+  public static byte[] fromHex(String hex) {
+    byte[] b = new byte[hex.length() / 2];
+    for (int i = 0; i < b.length; i++) {
+      int index = i * 2;
+      int v = Integer.parseInt(hex.substring(index, index + 2), 16);
+      b[i] = (byte)v;
+    }
+    return b;
+  }
+
+  private byte[] hmac(byte[] input, byte[] key) throws BootstrapException {
+    Mac mac;
+    try {
+      mac = Mac.getInstance("HmacSHA256");
+      SecretKeySpec keySpec = new SecretKeySpec(key, "HmacSHA256");
+      mac.init(keySpec);
+      return mac.doFinal(input);
+    } catch (NoSuchAlgorithmException | InvalidKeyException e) {
+      logger.severe("Cannot calculate hmac" + e.getMessage());
+      throw new BootstrapException(e.getMessage());
+    }
+  }
+
+  private String hmac(String input, String key) throws BootstrapException {
+    byte[] hash = hmac(input.getBytes(), fromHex(key));
+    return toHex(hash); }
 
   public boolean examineInitiateInterest(Interest interest,
-                                         Configuration config) {
+                                         Configuration config)
+      throws BootstrapException {
     String[] values = parseInitiateInterest(interest);
     final String devId = values[0];
     final String r0 = values[1];
@@ -151,14 +190,15 @@ public class OwnerImplDetail {
     OnRegisterFailed onRegisterFailed = new OnRegisterFailed() {
       @Override
       public void onRegisterFailed(Name prefix) {
-          onFail.onFail(config.getDevicePairingId(), "Cannot serve device cert: cannot register prefix");
+        onFail.onFail(config.getDevicePairingId(),
+                      "Cannot serve device cert: cannot register prefix");
       }
     };
 
     OnRegisterSuccess onRegisterSuccess = new OnRegisterSuccess() {
       @Override
       public void onRegisterSuccess(Name prefix, long registeredPrefixId) {
-          logger.fine("Registered prefix " + prefix.toUri());
+        logger.fine("Registered prefix " + prefix.toUri());
       }
     };
 
@@ -167,7 +207,7 @@ public class OwnerImplDetail {
   }
 
   private Name makeSignedCertificateName(String devicePairingId) {
-      // TODO
+    // TODO
     return null;
   }
 }
