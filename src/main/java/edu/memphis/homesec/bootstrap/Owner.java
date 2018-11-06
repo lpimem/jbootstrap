@@ -14,4 +14,5 @@ public interface Owner {
 
     String DEFAULT_PREFIX = "/local-home";
     String DEFAULT_BOOTSTRAP_PREFIX = DEFAULT_PREFIX + "/bootstrap";
+    String DEFAULT_OWNER_BT_PREFIX = DEFAULT_BOOTSTRAP_PREFIX + "/owner";
 }

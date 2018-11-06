@@ -15,6 +15,7 @@ dependencies {
     compile 'net.named-data:jndn-android:0.18'
     compile 'com.google.guava:guava:26.0-jre'
     compile group: 'org.bouncycastle', name: 'bcprov-jdk16', version: '1.45'
+    compile group: 'org.slf4j', name: 'slf4j-api', version: '1.7.25'
 
     compile project(':jndn-node')
 
