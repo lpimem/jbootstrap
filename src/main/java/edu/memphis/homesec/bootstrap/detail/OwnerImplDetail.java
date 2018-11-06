@@ -20,6 +20,7 @@ import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.util.Random;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -43,7 +44,7 @@ public class OwnerImplDetail {
     OnInterestCallback callback =
         (prefix, interest, face, interestFilterId, filter) -> {
       try {
-        if (!examineInitiateInterest(interest, configuration)) {
+        if (!examineInitiateInterest(interest, configuration, session)) {
           onFail.onFail(configuration.getDevicePairingId(),
                         "Invalid interest for getting owner certificate");
           return;
@@ -138,7 +139,8 @@ public class OwnerImplDetail {
   }
 
   public boolean examineInitiateInterest(Interest interest,
-                                         Configuration config)
+                                         Configuration config,
+                                         Session s)
       throws BootstrapException {
     String[] values = parseInitiateInterest(interest);
     final String devId = values[0];
@@ -146,7 +148,11 @@ public class OwnerImplDetail {
     final String sig = values[2];
     final String input = String.format("%s|%s", devId, r0);
     final String hmacHash = hmac(input, config.getDevicePairingCode());
-    return secureCompare(sig, hmacHash);
+    final boolean match = secureCompare(sig, hmacHash);
+    if (match) {
+      s.setChallengeToOwner(r0);
+    }
+    return match;
   }
 
   public void sendOwnerCert(Interest interest, Configuration config,
@@ -188,6 +194,10 @@ public class OwnerImplDetail {
     n.append("device");
     n.append(c.getDevicePairingId());
     n.append(s.getChallengeToOwner());
+
+    final String challengeToDev = randomHexString(7);
+    s.setChallengeToDevice(challengeToDev);
+    
     n.append(s.getChallengeToDevice());
     String check =
         String.format("%s%s%s", c.getDevicePairingId(), s.getChallengeToOwner(),
@@ -296,6 +306,14 @@ public class OwnerImplDetail {
     n.append(devicePairingId);
     n.append(challengeOwner);
     return n;
+  }
+
+  public static String randomHexString(int length){
+    Random r = new Random();
+    r.setSeed(System.nanoTime());
+    byte[] buf = new byte[length];
+    r.nextBytes(buf);
+    return toHex(buf);
   }
 
   public static String getContentAsString(Data d) {
