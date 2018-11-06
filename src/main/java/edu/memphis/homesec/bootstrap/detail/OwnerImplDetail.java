@@ -24,7 +24,6 @@ import java.security.NoSuchAlgorithmException;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
-import org.apache.http.util.ByteArrayBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -144,10 +143,10 @@ public class OwnerImplDetail {
     String[] values = parseInitiateInterest(interest);
     final String devId = values[0];
     final String r0 = values[1];
-    final String hmac = values[2];
+    final String sig = values[2];
     final String input = String.format("%s|%s", devId, r0);
-    // TODO: Secure compare.
-    return hmac(input, config.getDevicePairingCode()).equalsIgnoreCase(hmac);
+    final String hmacHash = hmac(input, config.getDevicePairingCode());
+    return secureCompare(sig, hmacHash);
   }
 
   public void sendOwnerCert(Interest interest, Configuration config,
