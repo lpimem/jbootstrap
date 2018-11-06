@@ -64,10 +64,12 @@ public class OwnerImplDetail {
         Session s = null;
         try {
           s = parseDeviceCert(data, configuration, session);
+          signDeviceCertificate(configuration, s.getDeviceCertificate());
         } catch (BootstrapException e) {
           onFail.onFail(configuration.getDevicePairingId(), e.getMessage());
           return;
         }
+
         serveSignedDeviceCert(configuration, s, onSuccess, onFail);
       };
 
@@ -139,8 +141,7 @@ public class OwnerImplDetail {
   }
 
   public boolean examineInitiateInterest(Interest interest,
-                                         Configuration config,
-                                         Session s)
+                                         Configuration config, Session s)
       throws BootstrapException {
     String[] values = parseInitiateInterest(interest);
     final String devId = values[0];
@@ -197,7 +198,7 @@ public class OwnerImplDetail {
 
     final String challengeToDev = randomHexString(7);
     s.setChallengeToDevice(challengeToDev);
-    
+
     n.append(s.getChallengeToDevice());
     String check =
         String.format("%s%s%s", c.getDevicePairingId(), s.getChallengeToOwner(),
@@ -241,7 +242,8 @@ public class OwnerImplDetail {
       Certificate cert = new Certificate(certData);
       session.setDeviceCertificate(cert);
     } catch (DerDecodingException e) {
-      logger.error("Cannot re-construct cert from data, error: {}", e.getMessage());
+      logger.error("Cannot re-construct cert from data, error: {}",
+                   e.getMessage());
       throw new BootstrapException(e);
     }
     return session;
@@ -308,7 +310,7 @@ public class OwnerImplDetail {
     return n;
   }
 
-  public static String randomHexString(int length){
+  public static String randomHexString(int length) {
     Random r = new Random();
     r.setSeed(System.nanoTime());
     byte[] buf = new byte[length];
