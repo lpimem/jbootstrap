@@ -28,6 +28,7 @@ import javax.crypto.spec.SecretKeySpec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@SuppressWarnings("WeakerAccess")
 public class OwnerImplDetail {
 
   private final static Logger logger =
@@ -54,14 +55,14 @@ public class OwnerImplDetail {
       }
 
       try {
-        sendOwnerCert(interest, configuration, session);
+        sendOwnerCert(configuration);
       } catch (BootstrapException e) {
         logger.warn("Cannot send owner cert.");
         onFail.onFail(configuration.getDevicePairingId(), e.getMessage());
       }
 
       OnData onDeviceCert = (interest1, data) -> {
-        Session s = null;
+        Session s;
         try {
           s = parseDeviceCert(data, configuration, session);
           signDeviceCertificate(configuration, s.getDeviceCertificate());
@@ -88,7 +89,7 @@ public class OwnerImplDetail {
     node.registerPrefix(btOwnerCertName, callback, onRegisterSuccess);
   }
 
-  private String[] parseInitiateInterest(Interest interest)
+  protected String[] parseInitiateInterest(Interest interest)
       throws BootstrapException {
     logger.debug("parsing interest {}", interest.getName());
     final int i = btOwnerCertName.size();
@@ -96,9 +97,9 @@ public class OwnerImplDetail {
     if (interest.getName().size() <= min_length) {
       throw new BootstrapException("Format error: interest name is too short.");
     }
-    String pairingId = interest.getName().get(i).toString();
-    String r0 = interest.getName().get(i + 1).toString();
-    String hmac = interest.getName().get(i + 2).toString();
+    String pairingId = interest.getName().get(i).getValue().toString();
+    String r0 = interest.getName().get(i + 1).getValue().toString();
+    String hmac = interest.getName().get(i + 2).getValue().toString();
     logger.debug("parsed: Device Pairing ID: {}, R: {}, HMAC: {}", pairingId,
                  r0, hmac);
     return new String[] {pairingId, r0, hmac};
@@ -122,7 +123,7 @@ public class OwnerImplDetail {
     return b;
   }
 
-  private byte[] hmac(byte[] input, byte[] key) throws BootstrapException {
+  protected byte[] hmac(byte[] input, byte[] key) throws BootstrapException {
     Mac mac;
     try {
       mac = Mac.getInstance("HmacSHA256");
@@ -156,8 +157,7 @@ public class OwnerImplDetail {
     return match;
   }
 
-  public void sendOwnerCert(Interest interest, Configuration config,
-                            Session session) throws BootstrapException {
+  public void sendOwnerCert(Configuration config) throws BootstrapException {
     final KeyChain keychain = config.getNdnKeyChain();
     final NACNode node = config.getNode();
     try {
@@ -175,13 +175,8 @@ public class OwnerImplDetail {
       throws BootstrapException {
     final int retry = 5;
     Interest i = makeDeviceCertificateInterest(config, session);
-    OnNetworkNack onNack = new OnNetworkNack() {
-      @Override
-      public void onNetworkNack(Interest interest, NetworkNack networkNack) {
-        onFail.onFail(config.getDevicePairingId(),
-                      networkNack.getReason().name());
-      }
-    };
+    OnNetworkNack onNack = (interest, networkNack) -> onFail.onFail(config.getDevicePairingId(),
+                  networkNack.getReason().name());
     try {
       config.getNode().expressInterest(i, onData, onNack, retry);
     } catch (IOException e) {
@@ -189,7 +184,7 @@ public class OwnerImplDetail {
     }
   }
 
-  private Interest makeDeviceCertificateInterest(Configuration c, Session s)
+  protected Interest makeDeviceCertificateInterest(Configuration c, Session s)
       throws BootstrapException {
     Name n = new Name(Owner.DEFAULT_BOOTSTRAP_PREFIX);
     n.append("device");
@@ -217,7 +212,7 @@ public class OwnerImplDetail {
   public Session parseDeviceCert(Data d, Configuration c, Session session)
       throws BootstrapException {
     final String content = getContentAsString(d);
-    final String[] parts = content.split("|");
+    final String[] parts = content.split("\\|");
     final String certHex = parts[0];
     final String signature = parts[1];
 
@@ -273,29 +268,15 @@ public class OwnerImplDetail {
     Name prefix = makeSignedCertificateName(config.getDevicePairingId(),
                                             session.getChallengeToOwner());
 
-    OnInterestCallback onInterestCallback = new OnInterestCallback() {
-      @Override
-      public void onInterest(Name prefix, Interest interest, Face face,
-                             long interestFilterId, InterestFilter filter) {
-        node.putData(session.getDeviceCertificate());
-        onSuccess.onSuccess(config.getDevicePairingId());
-      }
+    OnInterestCallback onInterestCallback = (prefix1, interest, face, interestFilterId, filter) -> {
+      node.putData(session.getDeviceCertificate());
+      onSuccess.onSuccess(config.getDevicePairingId());
     };
 
-    OnRegisterFailed onRegisterFailed = new OnRegisterFailed() {
-      @Override
-      public void onRegisterFailed(Name prefix) {
-        onFail.onFail(config.getDevicePairingId(),
-                      "Cannot serve device cert: cannot register prefix");
-      }
-    };
+    OnRegisterFailed onRegisterFailed = prefix12 -> onFail.onFail(config.getDevicePairingId(),
+                  "Cannot serve device cert: cannot register prefix");
 
-    OnRegisterSuccess onRegisterSuccess = new OnRegisterSuccess() {
-      @Override
-      public void onRegisterSuccess(Name prefix, long registeredPrefixId) {
-        logger.debug("Registered prefix " + prefix.toUri());
-      }
-    };
+    OnRegisterSuccess onRegisterSuccess = (prefix13, registeredPrefixId) -> logger.debug("Registered prefix " + prefix13.toUri());
 
     config.getNode().registerPrefix(prefix, onInterestCallback,
                                     onRegisterFailed, onRegisterSuccess, 5);

@@ -38,6 +38,14 @@ public class Configuration {
     public Configuration() {
     }
 
+    public Configuration(Configuration copy){
+        this.devicePairingId = copy.devicePairingId;
+        this.devicePairingId = copy.devicePairingId;
+        this.nameGenerator = copy.nameGenerator;
+        this.ndnKeyChain = copy.ndnKeyChain;
+        this.node = copy.node;
+    }
+
     public Configuration(String devicePairingId, String devicePairingCode,
                          DeviceNameGenerator nameGenerator, KeyChain ndnKeyChain,
                          NACNode node) {
