@@ -52,7 +52,7 @@ public class OwnerImplDetailTest extends OwnerImplDetail {
     public static void setup() throws SecurityException {
         final Name ownerIdentityName = new Name(OwnerImpl.DEFAULT_PREFIX + "/owner");
         KeyChain keyChain = KeyChainHelper.makeKeyChain(ownerIdentityName, testFace);
-        testFace = new LocalTestFace();
+        testFace = new LocalTestFace(OwnerImpl.DEFAULT_PREFIX + "/device" + "TestDevice123");
         fixCfg = new Configuration();
 
         fixCfg.setDevicePairingId("TestDevice123");
