@@ -200,8 +200,7 @@ public class OwnerImplDetail {
                       s.getChallengeToDevice());
     String hmacHash = hmac(check, c.getDevicePairingCode());
     n.append(hmacHash);
-    Interest i = new Interest(n, Global.DEFAULT_INTEREST_TIMEOUT_MS);
-    return i;
+    return new Interest(n, Global.DEFAULT_INTEREST_TIMEOUT_MS);
   }
 
   private boolean secureCompare(String a, String b) {
@@ -244,7 +243,7 @@ public class OwnerImplDetail {
     return session;
   }
 
-  public Certificate signDeviceCertificate(Configuration config,
+  public void signDeviceCertificate(Configuration config,
                                            Certificate device)
       throws BootstrapException {
     KeyChain keychain = config.getNdnKeyChain();
@@ -256,7 +255,6 @@ public class OwnerImplDetail {
       logger.error("Cannot sign device cert, {}", e.getMessage());
       throw new BootstrapException(e);
     }
-    return device;
   }
 
   public void serveSignedDeviceCert(Configuration config, Session session,

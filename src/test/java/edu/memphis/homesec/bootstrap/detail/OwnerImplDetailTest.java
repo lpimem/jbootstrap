@@ -2,14 +2,12 @@ package edu.memphis.homesec.bootstrap.detail;
 
 import edu.memphis.cs.netlab.nacapp.KeyChainHelper;
 import edu.memphis.cs.netlab.nacapp.NACNode;
-import edu.memphis.homesec.bootstrap.BootstrapException;
-import edu.memphis.homesec.bootstrap.Configuration;
-import edu.memphis.homesec.bootstrap.DefaultDeviceNameGenerator;
-import edu.memphis.homesec.bootstrap.OwnerImpl;
+import edu.memphis.homesec.bootstrap.*;
 import net.named_data.jndn.*;
 import net.named_data.jndn.encoding.WireFormat;
 import net.named_data.jndn.security.KeyChain;
 import net.named_data.jndn.security.SecurityException;
+
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -18,7 +16,27 @@ import java.io.IOException;
 
 public class OwnerImplDetailTest extends OwnerImplDetail {
 
+    static class MockDevice {
+
+        KeyChain keychain;
+
+        MockDevice(String name, Face f) throws SecurityException {
+            Name n = new Name(name);
+            keychain = KeyChainHelper.makeKeyChain(n, f);
+        }
+
+
+    }
+
     static class LocalTestFace extends Face {
+
+        MockDevice mockDevice;
+
+        LocalTestFace(String deviceName) throws SecurityException {
+            super();
+            mockDevice = new MockDevice(deviceName, this);
+        }
+
         @Override
         public long expressInterest(Interest interest, OnData onData, OnTimeout onTimeout,
                                     OnNetworkNack onNetworkNack, WireFormat wireFormat) throws IOException {
@@ -48,10 +66,13 @@ public class OwnerImplDetailTest extends OwnerImplDetail {
     }
 
     @Test
-    public void testBootstrap() {
-
+    public void testBootstrap() throws BootstrapException {
+        bootstrap(fixCfg, new Session(), devicePairingId -> {
+        }
+        , (devicePairingId, reason) -> {
+                    Assert.fail(reason);
+        } );
     }
-
 
     @Test
     public void testParseInitiateInterest() throws BootstrapException {
